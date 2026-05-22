@@ -6,8 +6,16 @@ name: Java CI with Maven
 on:
   push:
     branches: [ dev ]
-  # pull_request:
-  #   branches: [ master ]
+
+# ==========================================
+# ✨ 核心新增：同一时间同一个分支只允许跑一个任务
+# ==========================================
+concurrency:
+    # github.workflow 代表当前工作流名称，github.ref_name 代表当前分支名（即 dev）
+    # 这样可以确保“同一个工作流的同一个分支”被锁定在同一个并发组内
+    group: ${{ github.workflow }}-${{ github.ref_name }}
+    # 当有新的提交触发此任务时，如果旧的任务还在排队或运行中，直接强行取消（顶替）旧任务
+    cancel-in-progress: true
 
 jobs:
   build-and-deploy:
@@ -25,7 +33,7 @@ jobs:
         cache: 'maven'
     
     - name: Build with Maven
-      run: mvn -B package -T 1C --file pom.xml -Dmaven.test.skip=true
+      run: mvn clean package -T 1C -Dmaven.test.skip=true
     
     # 【步骤 A】将打包好的 jar 包上传到宝塔服务器
     - name: Upload JAR to Server
