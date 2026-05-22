@@ -33,7 +33,12 @@ jobs:
         cache: 'maven'
     
     - name: Build with Maven
-      run: mvn clean package -T 1C -Dmaven.test.skip=true
+      run: |
+        mvn clean package -T 1C -Dmaven.test.skip=true \
+          -Dmaven.test.skip=true \
+          -Dmaven.wagon.http.allowServerInsecure=true \
+          -Dmaven.wagon.http.ssl.insecure=true \
+          -Dmaven.wagon.http.ssl.allowall=true
     
     # 【步骤 A】将打包好的 jar 包上传到宝塔服务器
     - name: Upload JAR to Server
