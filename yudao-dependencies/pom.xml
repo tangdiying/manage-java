@@ -752,12 +752,12 @@
             </dependency>
 
             <!-- 积木报表-->
-            <dependency>
+            <!-- <dependency>
                 <groupId>org.jeecgframework.jimureport</groupId>
                 <artifactId>jimureport-spring-boot-starter</artifactId>
                 <version>${jimureport.version}</version>
-            </dependency>
-            <dependency>
+            </dependency> -->
+            <!-- <dependency>
                 <groupId>org.jeecgframework.jimureport</groupId>
                 <artifactId>jimubi-spring-boot-starter</artifactId>
                 <version>${jimubi.version}</version>
@@ -771,7 +771,7 @@
                         <artifactId>hutool-core</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
+            </dependency> -->
         </dependencies>
     </dependencyManagement>
 
