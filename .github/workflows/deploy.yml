@@ -1,0 +1,89 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ dev ]
+  # pull_request:
+  #   branches: [ master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'maven'
+    
+    - name: Build with Maven
+      run: mvn -B package -T 1C --file pom.xml -Dmaven.test.skip=true
+    
+    # 【步骤 A】将打包好的 jar 包上传到宝塔服务器
+    - name: Upload JAR to Server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        port: ${{ secrets.SSH_PORT || 22 }}
+        source: "yudao-gateway/target/yudao-gateway.jar"  # Maven 默认打包在 target 目录下
+        target: "/www/wwwroot/www.tdywork.cn/backend/gateway-server" # ⚠️ 改成你宝塔的文件夹路径
+        strip_components: 2     # 剥离前两层目录(gateway-server/target)，直接把 jar 放入目标文件夹
+    
+    # 3. 上传 infra-server
+    - name: Upload Infra JAR
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        port: ${{ secrets.SSH_PORT || 22 }}
+        source: "yudao-module-infra/yudao-module-infra-server/target/yudao-module-infra-server.jar"
+        target: "/www/wwwroot/www.tdywork.cn/backend/infra-server" # ⚠️ 修改为宝塔中基础服务的实际路径
+        strip_components: 3
+
+    # 4. 上传 system-server
+    - name: Upload System JAR
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        port: ${{ secrets.SSH_PORT || 22 }}
+        source: "yudao-module-system/yudao-module-system-server/target/yudao-module-system-server.jar"
+        target: "/www/wwwroot/www.tdywork.cn/backend/system-server" # ⚠️ 修改为宝塔中系统服务的实际路径
+        strip_components: 3
+    
+    # 【步骤 B】远程执行命令，重启 Java 项目
+    - name: Restart Java Service
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        port: ${{ secrets.SSH_PORT || 22 }}
+        script: |
+          # 1. 这里的项目名称，是你在宝塔“Java项目”列表里看到的名字（通常是你的域名或自定义的名称）
+          BT_GATEWAY_NAME="gateway-server"
+          BT_INFRA_NAME="infra-server"
+          BT_SYSTEM_NAME="system-server" 
+          
+          echo "正在通过宝塔脚本重启 Java 项目: $PROJECT_NAME ..."
+          
+          # 2. 调用宝塔内置的 Java 项目管理器脚本进行重启
+          # 宝塔的通用控制脚本路径一般为 /www/server/panel/vhost/cert/ 
+          # 或者直接调用其内部的单独管理脚本，最稳妥的通用命令是：
+          /www/server/panel/script/bt_java_service.sh restart "$BT_GATEWAY_NAME"
+          /www/server/panel/script/bt_java_service.sh restart "$BT_INFRA_NAME"
+          /www/server/panel/script/bt_java_service.sh restart "$BT_SYSTEM_NAME"
+          
+          echo "宝塔 Java 服务重启指令已发送！"
